@@ -1,0 +1,8 @@
+{
+  "AppType" : "PUBLIC",
+  "UserAgent": "ExcelInvoices-CDPB2R",
+  "ConsumerKey" : "CTKF3DYCLQMF01R3I1DFKA7GOIE9MS",
+  "ConsumerSecret" : "JCU9MSEFAVHBDMLHWEQLUBBMULYHXY",
+  "CallbackBaseUrl" : "http://localhost:8080/Excel-To-Invoice",
+  "CallbackPath" : "/callback"
+}
