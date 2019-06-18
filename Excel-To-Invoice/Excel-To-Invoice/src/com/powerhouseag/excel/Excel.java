@@ -11,7 +11,6 @@ import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.threeten.bp.LocalDate;
 
-@SuppressWarnings("deprecation")
 public class Excel {
 	
 	public Excel(String file) {
