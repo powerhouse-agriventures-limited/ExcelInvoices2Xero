@@ -34,7 +34,7 @@ public class ProcessServlet extends HttpServlet {
 	
 	protected void doPost(HttpServletRequest request, HttpServletResponse response) {
 		
-		// recieve file
+		// Receive file
             try {
                 List<FileItem> multiparts = new ServletFileUpload(new DiskFileItemFactory()).parseRequest(request);
                noFiles = multiparts.size()-1;
@@ -53,6 +53,7 @@ public class ProcessServlet extends HttpServlet {
                ex.printStackTrace();
             }
 		
+        // api to access xero database
 		AccountingApi accountingApi = ApiStorage.getApi();
 		
 		// objects for making invoice objects
@@ -63,56 +64,57 @@ public class ProcessServlet extends HttpServlet {
 		
 		// take excel data and put onto invoice
 		for(int i = 0; i < noFiles; i++) {
+			
+			// files that were uploaded
 			fileObjects[i] = new File(UPLOAD_DIRECTORY+File.separator+files[i]);
+			
+			// putting files into excel objects
 			excel[i] = new Excel(fileObjects[i].getAbsolutePath());
 			
+			// date due and date made
 			LocalDate dueDate;
 			LocalDate madeDate;
-			
-			// date created
-			//date = LocalDate.of(excel[i].getYear()+1900, excel[i].getMonth()+3, excel[i].getDay()+1);
-			//System.out.println(excel[i].getYear()+1900);
-			//System.out.println(excel[i].getMonth()+3);
-			//System.out.println(excel[i].getDay()+1);
 			
 			try {
 				
 			// line on invoice
 			lineItem[i] = new LineItem();
 			
+			// date on excel sheet
 			LocalDate date = excel[i].getDate();
 			
+			// extracting individual year, month, and day integers and adjusting to actual values
 			int year = date.getYear()-70;
 			int month = date.getMonthValue()+1;
 			int day = date.getDayOfMonth()-1;
+
+			// date object for date invoice was made
+			madeDate = LocalDate.of(year, month, day);
 			
 			// if month is bigger than 12 reset back to one and add year
 			if(month>=13) {
 				month-=12;
 				year+=1;
-
-				madeDate = LocalDate.of(year-1, 12, day);
-			}else {
-				madeDate = LocalDate.of(year, month-1, day);
 			}
 			
-			// if repeating subtotal is divided by 12
+			// if repeating sub total is divided by 12
 			if(excel[i].getRepeating()) {
 				lineItem[i].setLineAmount(excel[i].getSubTotal()/12);
 				lineItem[i].setUnitAmount(excel[i].getSubTotal()/12);
 				
-				// due date object #############################
+				// due date object gets set to 20th of next month
 				dueDate = LocalDate.of(year, month, 20);
 				
-			// else subtotal is as writen on invoice
+			// else sub total is as written on invoice
 			}else {
 				lineItem[i].setLineAmount(excel[i].getSubTotal());
 				lineItem[i].setUnitAmount(excel[i].getSubTotal());
 
-				// due date object #############################
+				// due date object gets set to 20th of next month
 				dueDate = LocalDate.of(year, month, 20);
 			}
 			
+			// adding other attributes to line on invoice
 			lineItem[i].setDescription("May-May Grazing");
 			lineItem[i].setQuantity(1.0);
 			lineItem[i].setTaxType("OUTPUT2");
@@ -145,14 +147,14 @@ public class ProcessServlet extends HttpServlet {
 		invoices.addInvoicesItem(invoice[i]);
 		}
 		
-		// create invoice
+		// add invoices to xero database
 		try {
 			accountingApi.createInvoice(invoices, true);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 		
-        
+        // printwriter to output to screen
 	PrintWriter out;
 	
 	try {
@@ -161,6 +163,7 @@ public class ProcessServlet extends HttpServlet {
 		out.println("<html>");
 		out.println("<body>");
 		out.println("All File(s) Uploaded and Processed<br>");
+		out.println("<br>");
 		out.println("<br>");
 		out.println("File(s) failed, check invoices:<br>");
 		for(String file:failedProcessing) {
@@ -171,6 +174,7 @@ public class ProcessServlet extends HttpServlet {
 				break;
 			}
 		}
+		out.println("<br>");
 		out.println("<br>");
 		out.println("<form action=\"./upload\">");
 		out.println("<input type=\"submit\" value=\"Upload more File(s)\">");

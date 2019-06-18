@@ -25,24 +25,27 @@ public class Excel {
 	
 	private Cell output;
 	
+	// get date on invoice
 	public LocalDate getDate() {
-		LocalDate date;
-		date = LocalDate.ofEpochDay((long) find("Date:", 1).getNumericCellValue());
-		return date;
+		return LocalDate.ofEpochDay((long) find("Date:", 1).getNumericCellValue());
 	}
 	
+	// get invoice number from invoice
 	public String getInvoiceNo() {
 		return find("Invoice No.:", 1).getStringCellValue();
 	}
 	
+	// get sub total from invoice
 	public double getSubTotal() {
 		return find("Sub total", 5).getNumericCellValue();
 	}
 	
+	// get name of recipient from invoice
 	public String getName() {
 		return find("To:", 1).getStringCellValue();
 	}
 	
+	// check if the invoice is to be paid over 12 months
 	public boolean getRepeating() {
 		boolean repeating;
 		if(find("Monthly amount due by automatic payment (total divided by 12 months)", 5)!=null) {
@@ -53,6 +56,7 @@ public class Excel {
 		return repeating;
 	}
 
+	// find text within an excel file
 	private Cell find(String text, int right) {
 		
 		output = null;
@@ -74,8 +78,6 @@ public class Excel {
 				try {
 					if(r.getCell(x).getCellType() == CellType.STRING) {
 						if(r.getCell(x).getStringCellValue().equals(text)) {
-							//System.out.println(text+" Found: "+r.getCell(x));
-							//System.out.println(r.getCell(x));
 							output = r.getCell(x+right);
 						}
 					}
