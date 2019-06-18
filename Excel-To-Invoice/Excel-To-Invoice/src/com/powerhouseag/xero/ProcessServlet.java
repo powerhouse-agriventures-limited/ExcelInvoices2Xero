@@ -3,7 +3,6 @@ package com.powerhouseag.xero;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.Date;
 import java.util.List;
 
 import javax.servlet.http.HttpServlet;
@@ -68,7 +67,7 @@ public class ProcessServlet extends HttpServlet {
 			excel[i] = new Excel(fileObjects[i].getAbsolutePath());
 			
 			LocalDate dueDate;
-			//LocalDate date;####################################################
+			LocalDate madeDate;
 			
 			// date created
 			//date = LocalDate.of(excel[i].getYear()+1900, excel[i].getMonth()+3, excel[i].getDay()+1);
@@ -81,15 +80,30 @@ public class ProcessServlet extends HttpServlet {
 			// line on invoice
 			lineItem[i] = new LineItem();
 			
-			int year = excel[i].getYear()+1900;
-			int month = excel[i].getMonth()+1;
-			int day = 20;
+			LocalDate date = excel[i].getDate();
+			
+			int year = date.getYear()-70;
+			int month = date.getMonthValue()+1;
+			int day = date.getDayOfMonth()-1;
+
+			System.out.println(date.getYear());
+			System.out.println(date.getMonthValue());
+			System.out.println(date.getDayOfMonth());
 			
 			// if month is bigger than 12 reset back to one and add year
 			if(month>=13) {
 				month-=12;
 				year+=1;
+
+				madeDate = LocalDate.of(year, 1, day);
+			}else {
+				madeDate = LocalDate.of(year, month-1, day);
 			}
+
+			System.out.println(date.getYear());
+			System.out.println(date.getMonthValue());
+			System.out.println(date.getDayOfMonth());
+			
 			
 			// if repeating subtotal is divided by 12
 			if(excel[i].getRepeating()) {
@@ -97,7 +111,7 @@ public class ProcessServlet extends HttpServlet {
 				lineItem[i].setUnitAmount(excel[i].getSubTotal()/12);
 				
 				// due date object #############################
-				//dueDate = LocalDate.of(year, month, day);
+				dueDate = LocalDate.of(year, month, 20);
 				
 			// else subtotal is as writen on invoice
 			}else {
@@ -105,10 +119,8 @@ public class ProcessServlet extends HttpServlet {
 				lineItem[i].setUnitAmount(excel[i].getSubTotal());
 
 				// due date object #############################
-				//dueDate = LocalDate.of(year, month, day);
+				dueDate = LocalDate.of(year, month, 20);
 			}
-			Date date = new Date();
-			dueDate = LocalDate.of(date.getYear(), date.getMonth()+1, 20);
 			
 			lineItem[i].setDescription("May-May Grazing");
 			lineItem[i].setQuantity(1.0);
@@ -125,7 +137,7 @@ public class ProcessServlet extends HttpServlet {
 			invoice[i].setContact(contact[i]);
 			invoice[i].setType(TypeEnum.ACCREC);
 			invoice[i].setDueDate(dueDate); //####### Date and due date not working
-			//invoice[i].setDate(date);#########################
+			invoice[i].setDate(madeDate); //#########################
 			invoice[i].setReference(excel[i].getInvoiceNo());
 			invoice[i].setStatus(StatusEnum.SUBMITTED);
 			
@@ -133,8 +145,6 @@ public class ProcessServlet extends HttpServlet {
 				failedProcessing[i] = files[i];
 			}
 		}
-		
-		
 		
 		// invoices to create
 		Invoices invoices = new Invoices();
@@ -150,6 +160,7 @@ public class ProcessServlet extends HttpServlet {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+		
         
 	PrintWriter out;
 	

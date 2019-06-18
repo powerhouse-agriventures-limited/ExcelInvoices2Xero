@@ -9,6 +9,7 @@ import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.threeten.bp.LocalDate;
 
 @SuppressWarnings("deprecation")
 public class Excel {
@@ -25,16 +26,10 @@ public class Excel {
 	
 	private Cell output;
 	
-	public int getYear() {
-		return find("Date:", 1).getDateCellValue().getYear();
-	}
-	
-	public int getMonth() {
-		return find("Date:", 1).getDateCellValue().getMonth();
-	}
-	
-	public int getDay() {
-		return find("Date:", 1).getDateCellValue().getDay();
+	public LocalDate getDate() {
+		LocalDate date;
+		date = LocalDate.ofEpochDay((long) find("Date:", 1).getNumericCellValue());
+		return date;
 	}
 	
 	public String getInvoiceNo() {
