@@ -28,61 +28,93 @@ public class ProcessServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private final String UPLOAD_DIRECTORY = "./WEB-INF/files";
 	private int noFiles;
-	private String[] files;
+	private String[] fileNames;
 	private String[] failedProcessing = new String[100];
-	private File[] fileObjects = new File[100];
-	
+	private File fileObject;
+
 	protected void doPost(HttpServletRequest request, HttpServletResponse response) {
-		
+
 		// Receive file
-            try {
-                List<FileItem> multiparts = new ServletFileUpload(new DiskFileItemFactory()).parseRequest(request);
-               noFiles = multiparts.size()-1;
-               files = new String[noFiles];
-                for(int i = 0;i < multiparts.size(); i++) {
-            	   FileItem item = multiparts.get(i);
-                    if(!item.isFormField()){
-                        String name = new File(item.getName()).getName();
-                        files[i] = name;
-                        System.out.println(files[i]);
-                        item.write( new File(UPLOAD_DIRECTORY + File.separator + name));
-                    }
-               }
-               //File uploaded successfully
-            } catch (Exception ex) {
-               ex.printStackTrace();
-            }
-		
-        // api to access xero database
+		try {
+			List<FileItem> multiparts = new ServletFileUpload(new DiskFileItemFactory()).parseRequest(request);
+			noFiles = multiparts.size()-1;
+			fileNames = new String[noFiles];
+			for(int i = 0;i < multiparts.size(); i++) {
+				FileItem item = multiparts.get(i);
+				if(!item.isFormField()){
+					String name = new File(item.getName()).getName();
+					fileNames[i] = name;
+					System.out.println(fileNames[i]);
+					item.write( new File(UPLOAD_DIRECTORY + File.separator + name));
+				}
+			}
+			//File uploaded successfully
+		} catch (Exception ex) {
+			ex.printStackTrace();
+		}
+
+		//######################################################################################################
+
+		// api to access xero database
 		AccountingApi accountingApi = ApiStorage.getApi();
-		
+
 		// objects for making invoice objects
-		Excel[] excel = new Excel[noFiles];
-		Invoice[] invoice = new Invoice[noFiles];
-		LineItem[] lineItem = new LineItem[noFiles];
-		Contact[] contact = new Contact[noFiles];
-		
+		Excel excel;
+		Invoice invoice = new Invoice();
+		LineItem lineItem = new LineItem();
+		Contact contact = new Contact();
+
+		// invoices to create
+		Invoices invoices = new Invoices();
+
 		// take excel data and put onto invoice
 		for(int i = 0; i < noFiles; i++) {
-			
+
 			// files that were uploaded
-			fileObjects[i] = new File(UPLOAD_DIRECTORY+File.separator+files[i]);
-			
+			fileObject = new File(UPLOAD_DIRECTORY+File.separator+fileNames[i]);
+
 			// putting files into excel objects
-			excel[i] = new Excel(fileObjects[i].getAbsolutePath());
-			
+			excel = new Excel(fileObject.getAbsolutePath());
+
 			// date due and date made
 			LocalDate dueDate;
 			LocalDate madeDate;
+
+			LocalDate date = LocalDate.now();
+
+			String name = "Someone";
+			double subTotal = 0.00;
+			String invoiceNumber = "An Invoice Number";
+
+			// using try/catch to see if any files fail and keep processing others
+			try {
+				// get name from excel sheet
+				name = excel.getName();
+			}catch(NullPointerException e) {
+				failedProcessing[i] = fileNames[i];
+			}
 			
 			try {
-				
-			// line on invoice
-			lineItem[i] = new LineItem();
-			
-			// date on excel sheet
-			LocalDate date = excel[i].getDate();
-			
+				// get invoice number from excel sheet
+				invoiceNumber = excel.getInvoiceNo();
+			}catch(NullPointerException e) {
+				failedProcessing[i] = fileNames[i];
+			}
+
+			try {
+				// get date from excel sheet
+				date = excel.getDate();
+			}catch(NullPointerException e) {
+				failedProcessing[i] = fileNames[i];
+			}
+
+			try {
+				// get sub total from excel sheet
+				subTotal = excel.getSubTotal();
+			}catch(NullPointerException e) {
+				failedProcessing[i] = fileNames[i];
+			}
+
 			// extracting individual year, month, and day integers and adjusting to actual values
 			int year = date.getYear()-70;
 			int month = date.getMonthValue()+1;
@@ -90,109 +122,101 @@ public class ProcessServlet extends HttpServlet {
 
 			// date object for date invoice was made
 			madeDate = LocalDate.of(year, month-1, day);
-			
+
 			// if month is bigger than 12 reset back to one and add year
 			if(month>=13) {
 				month-=12;
 				year+=1;
 			}
-			
-			// if repeating sub total is divided by 12
-			if(excel[i].getRepeating()) {
-				lineItem[i].setLineAmount(excel[i].getSubTotal()/12);
-				lineItem[i].setUnitAmount(excel[i].getSubTotal()/12);
-				
+
+			// if repeating invoice sub total is divided by 12
+			if(excel.getRepeating()) {
+				lineItem.setLineAmount(subTotal/12);
+				lineItem.setUnitAmount(subTotal/12);
+
 				// due date object gets set to 20th of next month
 				dueDate = LocalDate.of(year, month, 20);
-				
-			// else sub total is as written on invoice
+
+				// else sub total is as written on invoice
 			}else {
-				lineItem[i].setLineAmount(excel[i].getSubTotal());
-				lineItem[i].setUnitAmount(excel[i].getSubTotal());
+				lineItem.setLineAmount(subTotal);
+				lineItem.setUnitAmount(subTotal);
 
 				// due date object gets set to 20th of next month
 				dueDate = LocalDate.of(year, month, 20);
 			}
-			
+
 			// adding other attributes to line on invoice
-			lineItem[i].setDescription("May-May Grazing");
-			lineItem[i].setQuantity(1.0);
-			lineItem[i].setTaxType("OUTPUT2");
-			lineItem[i].setAccountCode("200");
-		
+			lineItem.setDescription("May-May Grazing");
+			lineItem.setQuantity(1.0);
+			lineItem.setTaxType("OUTPUT2");
+			lineItem.setAccountCode("200");
+
 			// contact to send invoice to
-			contact[i] = new Contact();
-			contact[i].setName(excel[i].getName());
-			
+			contact = new Contact();
+			contact.setName(name);
+
 			// invoice object
-			invoice[i] = new Invoice();
-			invoice[i].addLineItemsItem(lineItem[i]);
-			invoice[i].setContact(contact[i]);
-			invoice[i].setType(TypeEnum.ACCREC);
-			invoice[i].setDueDate(dueDate);
-			invoice[i].setDate(madeDate);
-			invoice[i].setReference(excel[i].getInvoiceNo());
-			invoice[i].setStatus(StatusEnum.SUBMITTED);
-			
-			}catch(NullPointerException e) {
-				failedProcessing[i] = files[i];
-			}
+			invoice = new Invoice();
+			invoice.addLineItemsItem(lineItem);
+			invoice.setContact(contact);
+			invoice.setType(TypeEnum.ACCREC);
+			invoice.setDueDate(dueDate);
+			invoice.setDate(madeDate);
+			invoice.setReference(invoiceNumber);
+			invoice.setStatus(StatusEnum.SUBMITTED);
+
+			// adding invoice items to the object that gets sent to the xero servers
+			invoices.addInvoicesItem(invoice);
 		}
-		
-		// invoices to create
-		Invoices invoices = new Invoices();
-		
-		// adding invoice items to the object that gets sent to the xero servers
-		for(int i = 0; i < noFiles; i++) {
-		invoices.addInvoicesItem(invoice[i]);
-		}
-		
+
 		// add invoices to xero database
 		try {
 			accountingApi.createInvoice(invoices, true);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		
-        // printwriter to output to screen
-	PrintWriter out;
-	
-	try {
-		out = response.getWriter();
 
-		out.println("<html>");
-		out.println("<body>");
-		out.println("All File(s) Uploaded and Processed<br>");
-		out.println("<br>");
-		out.println("<br>");
-		out.println("File(s) failed, check invoices:<br>");
-		for(String file:failedProcessing) {
-			if(file!=null) {
-				out.println(file+"<br>");
-			}else {
-				out.println("No Failed Files<br>");
-				break;
+		// printwriter to output to screen
+		PrintWriter out;
+
+		try {
+			out = response.getWriter();
+
+			out.println("<html>");
+			out.println("<body>");
+			out.println("All File(s) Uploaded and Processed<br>");
+			out.println("<br>");
+			out.println("<br>");
+			out.println("File(s) failed, check invoices:<br>");
+			for(String file:failedProcessing) {
+				if(file!=null) {
+					out.println(file+"<br>");
+				}else {
+					out.println("No Failed Files<br>");
+					break;
+				}
 			}
+			out.println("<br>");
+			out.println("<br>");
+			out.println("<form action=\"./upload\">");
+			out.println("<input type=\"submit\" value=\"Upload more File(s)\">");
+			out.println("</form>");
+			out.println("</body>");
+			out.println("</html>");
+
+		} catch (IOException e1) {
+			e1.printStackTrace();
 		}
-		out.println("<br>");
-		out.println("<br>");
-		out.println("<form action=\"./upload\">");
-		out.println("<input type=\"submit\" value=\"Upload more File(s)\">");
-		out.println("</form>");
-		out.println("</body>");
-		out.println("</html>");
-		
-	} catch (IOException e1) {
-		e1.printStackTrace();
-	}
-	
-	// delete all uploaded files
-	for(File file:fileObjects) {
-		if(file!=null) {
+
+		// delete all uploaded files
+		File directory = new File(UPLOAD_DIRECTORY);
+
+		File[] files = directory.listFiles();
+		for(File file:files) {
 			file.delete();
 		}
-	}
-	
+
 	}
 
 }
