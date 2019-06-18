@@ -85,25 +85,16 @@ public class ProcessServlet extends HttpServlet {
 			int year = date.getYear()-70;
 			int month = date.getMonthValue()+1;
 			int day = date.getDayOfMonth()-1;
-
-			System.out.println(date.getYear());
-			System.out.println(date.getMonthValue());
-			System.out.println(date.getDayOfMonth());
 			
 			// if month is bigger than 12 reset back to one and add year
 			if(month>=13) {
 				month-=12;
 				year+=1;
 
-				madeDate = LocalDate.of(year, 1, day);
+				madeDate = LocalDate.of(year-1, 12, day);
 			}else {
 				madeDate = LocalDate.of(year, month-1, day);
 			}
-
-			System.out.println(date.getYear());
-			System.out.println(date.getMonthValue());
-			System.out.println(date.getDayOfMonth());
-			
 			
 			// if repeating subtotal is divided by 12
 			if(excel[i].getRepeating()) {
