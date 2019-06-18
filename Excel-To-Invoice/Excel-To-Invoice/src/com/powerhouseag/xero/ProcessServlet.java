@@ -89,7 +89,7 @@ public class ProcessServlet extends HttpServlet {
 			int day = date.getDayOfMonth()-1;
 
 			// date object for date invoice was made
-			madeDate = LocalDate.of(year, month, day);
+			madeDate = LocalDate.of(year, month-1, day);
 			
 			// if month is bigger than 12 reset back to one and add year
 			if(month>=13) {
