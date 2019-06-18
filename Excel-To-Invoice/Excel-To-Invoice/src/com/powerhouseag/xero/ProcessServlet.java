@@ -127,8 +127,8 @@ public class ProcessServlet extends HttpServlet {
 			invoice[i].addLineItemsItem(lineItem[i]);
 			invoice[i].setContact(contact[i]);
 			invoice[i].setType(TypeEnum.ACCREC);
-			invoice[i].setDueDate(dueDate); //####### Date and due date not working
-			invoice[i].setDate(madeDate); //#########################
+			invoice[i].setDueDate(dueDate);
+			invoice[i].setDate(madeDate);
 			invoice[i].setReference(excel[i].getInvoiceNo());
 			invoice[i].setStatus(StatusEnum.SUBMITTED);
 			
