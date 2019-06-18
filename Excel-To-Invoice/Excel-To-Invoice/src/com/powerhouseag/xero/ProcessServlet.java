@@ -3,6 +3,7 @@ package com.powerhouseag.xero;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.Date;
 import java.util.List;
 
 import javax.servlet.http.HttpServlet;
@@ -95,17 +96,20 @@ public class ProcessServlet extends HttpServlet {
 				lineItem[i].setLineAmount(excel[i].getSubTotal()/12);
 				lineItem[i].setUnitAmount(excel[i].getSubTotal()/12);
 				
-				// due date object
-				dueDate = LocalDate.of(year, month, day);
+				// due date object #############################
+				//dueDate = LocalDate.of(year, month, day);
 				
 			// else subtotal is as writen on invoice
 			}else {
 				lineItem[i].setLineAmount(excel[i].getSubTotal());
 				lineItem[i].setUnitAmount(excel[i].getSubTotal());
 
-				// due date object
-				dueDate = LocalDate.of(year, month, day);
+				// due date object #############################
+				//dueDate = LocalDate.of(year, month, day);
 			}
+			Date date = new Date();
+			dueDate = LocalDate.of(date.getYear(), date.getMonth()+1, 20);
+			
 			lineItem[i].setDescription("May-May Grazing");
 			lineItem[i].setQuantity(1.0);
 			lineItem[i].setTaxType("OUTPUT2");
@@ -120,7 +124,7 @@ public class ProcessServlet extends HttpServlet {
 			invoice[i].addLineItemsItem(lineItem[i]);
 			invoice[i].setContact(contact[i]);
 			invoice[i].setType(TypeEnum.ACCREC);
-			//invoice[i].setDueDate(dueDate); ####### Date and due date not working
+			invoice[i].setDueDate(dueDate); //####### Date and due date not working
 			//invoice[i].setDate(date);#########################
 			invoice[i].setReference(excel[i].getInvoiceNo());
 			invoice[i].setStatus(StatusEnum.SUBMITTED);
