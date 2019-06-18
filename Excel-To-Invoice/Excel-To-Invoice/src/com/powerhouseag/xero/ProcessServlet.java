@@ -181,6 +181,8 @@ public class ProcessServlet extends HttpServlet {
 		PrintWriter out;
 
 		try {
+			
+			boolean failed = false;
 			out = response.getWriter();
 
 			out.println("<html>");
@@ -192,11 +194,14 @@ public class ProcessServlet extends HttpServlet {
 			for(String file:failedProcessing) {
 				if(file!=null) {
 					out.println(file+"<br>");
-				}else {
-					out.println("No Failed Files<br>");
-					break;
+					failed=true;
 				}
 			}
+			
+			if(!failed) {
+				out.println("No Failed Files<br>");
+			}
+			
 			out.println("<br>");
 			out.println("<br>");
 			out.println("<form action=\"./upload\">");
