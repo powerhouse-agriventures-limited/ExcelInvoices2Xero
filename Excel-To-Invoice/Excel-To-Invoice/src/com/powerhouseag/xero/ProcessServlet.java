@@ -169,6 +169,8 @@ public class ProcessServlet extends HttpServlet {
 			// adding invoice items to the object that gets sent to the xero servers
 			invoices.addInvoicesItem(invoice);
 		}
+		
+//###########################################################################################################
 
 		// add invoices to xero database
 		try {
@@ -191,13 +193,19 @@ public class ProcessServlet extends HttpServlet {
 			out.println("<br>");
 			out.println("<br>");
 			out.println("File(s) failed, check invoices:<br>");
-			for(String file:failedProcessing) {
-				if(file!=null) {
-					out.println(file+"<br>");
-					failed=true;
-				}
-			}
 			
+			for(int i = 0; i < failedProcessing.length; i++) {
+				System.out.println(failedProcessing[i]);
+				if(failedProcessing[i]!=null) {
+					out.println(failedProcessing[i]+"<br>");
+					failed=true;
+					failedProcessing[i]=null;
+				}
+				System.out.println(failedProcessing[i]);
+				System.out.println("End");
+			}
+
+			System.out.println("End End");
 			if(!failed) {
 				out.println("No Failed Files<br>");
 			}
