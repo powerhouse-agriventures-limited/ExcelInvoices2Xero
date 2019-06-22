@@ -164,7 +164,11 @@ public class ProcessServlet extends HttpServlet {
 			invoice = new Invoice();
 			invoice.addLineItemsItem(lineItem);
 			invoice.setContact(contact);
-			invoice.setType(TypeEnum.ACCREC);
+			if(lineItem.getUnitAmount() >= 0.0) {
+				invoice.setType(TypeEnum.ACCREC);
+			}else {
+				invoice.setType(TypeEnum.ACCPAY);
+			}
 			invoice.setDueDate(dueDate);
 			invoice.setDate(madeDate);
 			invoice.setReference(invoiceNumber);
