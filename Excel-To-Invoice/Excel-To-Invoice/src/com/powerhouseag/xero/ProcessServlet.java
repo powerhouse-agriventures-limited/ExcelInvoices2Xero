@@ -16,6 +16,7 @@ import org.threeten.bp.LocalDate;
 
 import com.powerhouseag.excel.Excel;
 import com.xero.api.client.AccountingApi;
+import com.xero.models.accounting.Attachment;
 import com.xero.models.accounting.Contact;
 import com.xero.models.accounting.Invoice;
 import com.xero.models.accounting.Invoice.StatusEnum;
@@ -155,6 +156,9 @@ public class ProcessServlet extends HttpServlet {
 			// contact to send invoice to
 			contact = new Contact();
 			contact.setName(name);
+			
+			// pdf attachment
+			Attachment attachment = new Attachment();
 
 			// invoice object
 			invoice = new Invoice();
@@ -165,6 +169,7 @@ public class ProcessServlet extends HttpServlet {
 			invoice.setDate(madeDate);
 			invoice.setReference(invoiceNumber);
 			invoice.setStatus(StatusEnum.SUBMITTED);
+			invoice.addAttachmentsItem(attachment);
 
 			// adding invoice items to the object that gets sent to the xero servers
 			invoices.addInvoicesItem(invoice);
