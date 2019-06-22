@@ -168,6 +168,7 @@ public class ProcessServlet extends HttpServlet {
 				invoice.setType(TypeEnum.ACCREC);
 			}else {
 				invoice.setType(TypeEnum.ACCPAY);
+				lineItem.setUnitAmount(-lineItem.getUnitAmount());
 			}
 			invoice.setDueDate(dueDate);
 			invoice.setDate(madeDate);
