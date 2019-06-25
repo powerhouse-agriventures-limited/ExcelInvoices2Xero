@@ -91,6 +91,7 @@ public class ProcessServlet extends HttpServlet {
 			try {
 				// get name from excel sheet
 				name = excel.getName();
+				System.out.println(name);
 			}catch(NullPointerException e) {
 				failedProcessing[i] = fileNames[i];
 			}
@@ -98,13 +99,15 @@ public class ProcessServlet extends HttpServlet {
 			try {
 				// get invoice number from excel sheet
 				invoiceNumber = excel.getInvoiceNo();
+				System.out.println(invoiceNumber);
 			}catch(NullPointerException e) {
 				failedProcessing[i] = fileNames[i];
 			}
 
 			try {
 				// get date from excel sheet
-				date = excel.getDate();
+				date = excel.getInvoiceDate();
+				System.out.println(date);
 			}catch(NullPointerException e) {
 				failedProcessing[i] = fileNames[i];
 			}
@@ -112,14 +115,21 @@ public class ProcessServlet extends HttpServlet {
 			try {
 				// get sub total from excel sheet
 				subTotal = excel.getSubTotal();
+				System.out.println(subTotal);
 			}catch(NullPointerException e) {
 				failedProcessing[i] = fileNames[i];
 			}
 
 			// extracting individual year, month, and day integers and adjusting to actual values
-			int year = date.getYear()-70;
-			int month = date.getMonthValue()+1;
+			//int year = date.getYear()-70;
+			int year = date.getYear();
+			System.out.println("Year : "+year);
+			//int month = date.getMonthValue()+1;
+			int month = date.getMonthValue();
+			System.out.println("Month : "+month);
+			//int day = date.getDayOfMonth()-1;
 			int day = date.getDayOfMonth()-1;
+			System.out.println("Day : "+day);
 
 			// date object for date invoice was made
 			madeDate = LocalDate.of(year, month-1, day);
@@ -144,14 +154,30 @@ public class ProcessServlet extends HttpServlet {
 				lineItem.setUnitAmount(subTotal);
 
 				// due date object gets set to 20th of next month
-				dueDate = LocalDate.of(year, month, 20);
+				dueDate = excel.getDueDate();
 			}
+			System.out.println("Sub total : "+subTotal);
+			System.out.println("Due Date : "+dueDate);
 
 			// adding other attributes to line on invoice
-			lineItem.setDescription("May-May Grazing");
+			
+			//configuration for end of year final invoices
+			lineItem.setDescription("2019 Final");
 			lineItem.setQuantity(1.0);
 			lineItem.setTaxType("OUTPUT2");
-			lineItem.setAccountCode("200");
+			lineItem.setAccountCode("1502"); // "1502 - Grazing - May-May Heifers"
+			
+			//configuration for start of year annual invoices
+			//lineItem.setDescription("May-May Grazing");
+			//lineItem.setQuantity(1.0);
+			//lineItem.setTaxType("OUTPUT2");
+			//lineItem.setAccountCode("1502"); // "1502 - Grazing - May-May Heifers"
+
+			//configuration for start of year cow grazing invoices
+			//lineItem.setDescription("Winter Cow Grazing");
+			//lineItem.setQuantity(1.0);
+			//lineItem.setTaxType("OUTPUT2");
+			// lineItem.setAccountCode("1400"); // "1400 - Grazing Income"
 
 			// contact to send invoice to
 			contact = new Contact();

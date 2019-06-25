@@ -25,9 +25,28 @@ public class Excel {
 	
 	private Cell output;
 	
-	// get date on invoice
-	public LocalDate getDate() {
+	
+	
+	// get invoice date on invoice
+	public LocalDate getInvoiceDate() {
 		return LocalDate.ofEpochDay((long) find("Date:", 1).getNumericCellValue());
+	}
+	
+	// get due date on invoice
+	public LocalDate getDueDate() {
+		//String DueDateLine;
+		Integer DueDateDay;
+		Integer DueDateMonth;
+		Integer DueDateYear;
+		LocalDate DueDateLocalDate;
+		
+		//DueDateLine=find("Payment is due on the ", 0).getStringCellValue();
+		DueDateDay=Integer.valueOf("20");
+		DueDateMonth=Integer.valueOf("06");
+		DueDateYear=Integer.valueOf("2019");
+
+		DueDateLocalDate=LocalDate.of(DueDateYear, DueDateMonth, DueDateDay);
+		return DueDateLocalDate;
 	}
 	
 	// get invoice number from invoice
@@ -47,11 +66,16 @@ public class Excel {
 	
 	// check if the invoice is to be paid over 12 months
 	public boolean getRepeating() {
-		boolean repeating;
-		if(find("Monthly amount due by automatic payment (total divided by 12 months)", 5)!=null) {
-		repeating=true;
-		}else {
-			repeating=false;
+		boolean repeating=false;
+		try{
+			if(find("Monthly amount due by automatic payment (total divided by 12 months)", 5)!=null) {
+			
+			repeating=true;
+			}else {
+				repeating=false;
+			}
+		}catch(NullPointerException e) {
+			System.out.println("Search for repeating invoice failed");
 		}
 		return repeating;
 	}
