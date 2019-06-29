@@ -104,17 +104,13 @@ public class ProcessServlet extends HttpServlet {
 			out.println("File(s) failed, check invoices:<br>");
 
 			for(int i = 0; i < failedProcessing.length; i++) {
-				System.out.println(failedProcessing[i]);
 				if(failedProcessing[i]!=null) {
 					out.println(failedProcessing[i]+"<br>");
 					failed=true;
 					failedProcessing[i]=null;
 				}
-				System.out.println(failedProcessing[i]);
-				System.out.println("End");
 			}
 
-			System.out.println("End End");
 			if(!failed) {
 				out.println("No Failed Files<br>");
 			}
@@ -145,9 +141,11 @@ public class ProcessServlet extends HttpServlet {
 			}
 			InputStream is = new FileInputStream(pdf);
 			byte[] bytes = IOUtils.toByteArray(is);
+			
+			System.out.println(serverInvoices.getInvoices().get(0).getInvoiceID());
 
 			try {
-				accountingApi.createAccountAttachmentByFileName(serverInvoices.getInvoices().get(i).getInvoiceID(), pdf.getName(), bytes);
+				accountingApi.createInvoiceAttachmentByFileName(serverInvoices.getInvoices().get(i).getInvoiceID(), pdf.getName(), bytes);
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -258,7 +256,7 @@ public class ProcessServlet extends HttpServlet {
 			lineItem.setDescription("2019 Final");
 			lineItem.setQuantity(1.0);
 			lineItem.setTaxType("OUTPUT2");
-			lineItem.setAccountCode("1502"); // "1502 - Grazing - May-May Heifers"
+			lineItem.setAccountCode("200"); // "1502 - Grazing - May-May Heifers"
 			
 			//configuration for start of year annual invoices
 			//lineItem.setDescription("May-May Grazing");
