@@ -1,7 +1,9 @@
 package com.powerhouseag.xero;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
 import java.util.List;
 
@@ -12,11 +14,12 @@ import javax.servlet.http.HttpServletResponse;
 import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.disk.DiskFileItemFactory;
 import org.apache.commons.fileupload.servlet.ServletFileUpload;
+import org.apache.poi.util.IOUtils;
 import org.threeten.bp.LocalDate;
 
 import com.powerhouseag.excel.Excel;
+import com.powerhouseag.excel.ExcelToPdf;
 import com.xero.api.client.AccountingApi;
-import com.xero.models.accounting.Attachment;
 import com.xero.models.accounting.Contact;
 import com.xero.models.accounting.Invoice;
 import com.xero.models.accounting.Invoice.StatusEnum;
@@ -32,9 +35,35 @@ public class ProcessServlet extends HttpServlet {
 	private String[] fileNames;
 	private String[] failedProcessing = new String[100];
 	private File fileObject;
+	private Invoices serverInvoices;
+	private AccountingApi accountingApi;
 
-	protected void doPost(HttpServletRequest request, HttpServletResponse response) {
+	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
 
+		// recieve uploaded files
+		recieve(request);
+
+		// api to access xero database
+		accountingApi = ApiStorage.getAccountingApi();
+
+		// take excel data and put onto invoice
+		parseExcel();
+
+		// attach pdfs to invoices on server
+		attachPdfs();
+
+		// print to screen that transfer has succeeded
+		printSuccess(response);
+
+		// delete all files in upload directory
+		deleteFiles();
+	}
+	
+	
+
+	//#######################################################
+	//function to receive file from upload servlet
+	private void recieve(HttpServletRequest request) {
 		// Receive file
 		try {
 			List<FileItem> multiparts = new ServletFileUpload(new DiskFileItemFactory()).parseRequest(request);
@@ -53,29 +82,103 @@ public class ProcessServlet extends HttpServlet {
 		} catch (Exception ex) {
 			ex.printStackTrace();
 		}
+	}
 
-		//######################################################################################################
+	
+	//############################################################
+	// function to print to the screen that transfer has succeeded
+	private void printSuccess(HttpServletResponse response) {
+		// printwriter to output to screen
+		PrintWriter out;
 
-		// api to access xero database
-		AccountingApi accountingApi = ApiStorage.getApi();
+		try {
 
-		// objects for making invoice objects
-		Excel excel;
-		Invoice invoice = new Invoice();
-		LineItem lineItem = new LineItem();
-		Contact contact = new Contact();
+			boolean failed = false;
+			out = response.getWriter();
 
-		// invoices to create
+			out.println("<html>");
+			out.println("<body>");
+			out.println("All File(s) Uploaded and Processed<br>");
+			out.println("<br>");
+			out.println("<br>");
+			out.println("File(s) failed, check invoices:<br>");
+
+			for(int i = 0; i < failedProcessing.length; i++) {
+				System.out.println(failedProcessing[i]);
+				if(failedProcessing[i]!=null) {
+					out.println(failedProcessing[i]+"<br>");
+					failed=true;
+					failedProcessing[i]=null;
+				}
+				System.out.println(failedProcessing[i]);
+				System.out.println("End");
+			}
+
+			System.out.println("End End");
+			if(!failed) {
+				out.println("No Failed Files<br>");
+			}
+
+			out.println("<br>");
+			out.println("<br>");
+			out.println("<form action=\"./upload\">");
+			out.println("<input type=\"submit\" value=\"Upload more File(s)\">");
+			out.println("</form>");
+			out.println("</body>");
+			out.println("</html>");
+
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
+	}
+	
+	//#######################################
+	// function to attach pdfs to invoices
+	private void attachPdfs() throws IOException {
+		for(int i = 0; i < serverInvoices.getInvoices().size(); i++) {
+
+			File pdf = new File(UPLOAD_DIRECTORY+File.separator+fileNames[i]+".pdf");
+			try {
+				ExcelToPdf.createPdf(pdf, new File(UPLOAD_DIRECTORY+File.separator+fileNames[i]));
+			} catch (Exception e1) {
+				e1.printStackTrace();
+			}
+			InputStream is = new FileInputStream(pdf);
+			byte[] bytes = IOUtils.toByteArray(is);
+
+			try {
+				accountingApi.createAccountAttachmentByFileName(serverInvoices.getInvoices().get(i).getInvoiceID(), pdf.getName(), bytes);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+
+		}
+	}
+	
+	//#####################################################
+	// function to delete all files in the upload directory
+	private void deleteFiles() {
+		File directory = new File(UPLOAD_DIRECTORY);
+		File[] files = directory.listFiles();
+		for(File file:files) {
+			file.delete();
+		}
+	}
+	
+	//########################################################################
+	// function to take data from excel sheet and put into xero invoice object
+	private void parseExcel() {
+
+		// invoices to get uploaded to xero
 		Invoices invoices = new Invoices();
-
-		// take excel data and put onto invoice
+		
 		for(int i = 0; i < noFiles; i++) {
 
 			// files that were uploaded
 			fileObject = new File(UPLOAD_DIRECTORY+File.separator+fileNames[i]);
 
 			// putting files into excel objects
-			excel = new Excel(fileObject.getAbsolutePath());
+			Excel excel = new Excel(fileObject.getAbsolutePath());
 
 			// date due and date made
 			LocalDate dueDate;
@@ -91,15 +194,13 @@ public class ProcessServlet extends HttpServlet {
 			try {
 				// get name from excel sheet
 				name = excel.getName();
-				System.out.println(name);
 			}catch(NullPointerException e) {
 				failedProcessing[i] = fileNames[i];
 			}
-			
+
 			try {
 				// get invoice number from excel sheet
 				invoiceNumber = excel.getInvoiceNo();
-				System.out.println(invoiceNumber);
 			}catch(NullPointerException e) {
 				failedProcessing[i] = fileNames[i];
 			}
@@ -107,7 +208,6 @@ public class ProcessServlet extends HttpServlet {
 			try {
 				// get date from excel sheet
 				date = excel.getInvoiceDate();
-				System.out.println(date);
 			}catch(NullPointerException e) {
 				failedProcessing[i] = fileNames[i];
 			}
@@ -115,21 +215,14 @@ public class ProcessServlet extends HttpServlet {
 			try {
 				// get sub total from excel sheet
 				subTotal = excel.getSubTotal();
-				System.out.println(subTotal);
 			}catch(NullPointerException e) {
 				failedProcessing[i] = fileNames[i];
 			}
 
 			// extracting individual year, month, and day integers and adjusting to actual values
-			//int year = date.getYear()-70;
-			int year = date.getYear();
-			System.out.println("Year : "+year);
-			//int month = date.getMonthValue()+1;
-			int month = date.getMonthValue();
-			System.out.println("Month : "+month);
-			//int day = date.getDayOfMonth()-1;
+			int year = date.getYear()-70;
+			int month = date.getMonthValue()+1;
 			int day = date.getDayOfMonth()-1;
-			System.out.println("Day : "+day);
 
 			// date object for date invoice was made
 			madeDate = LocalDate.of(year, month-1, day);
@@ -139,6 +232,9 @@ public class ProcessServlet extends HttpServlet {
 				month-=12;
 				year+=1;
 			}
+
+			// line on invoice
+			LineItem lineItem = new LineItem();
 
 			// if repeating invoice sub total is divided by 12
 			if(excel.getRepeating()) {
@@ -150,17 +246,14 @@ public class ProcessServlet extends HttpServlet {
 
 				// else sub total is as written on invoice
 			}else {
+				// set subtotal to what is writen on excel
 				lineItem.setLineAmount(subTotal);
 				lineItem.setUnitAmount(subTotal);
 
 				// due date object gets set to 20th of next month
-				dueDate = excel.getDueDate();
+				dueDate = LocalDate.of(year, month, 20);
 			}
-			System.out.println("Sub total : "+subTotal);
-			System.out.println("Due Date : "+dueDate);
 
-			// adding other attributes to line on invoice
-			
 			//configuration for end of year final invoices
 			lineItem.setDescription("2019 Final");
 			lineItem.setQuantity(1.0);
@@ -180,14 +273,13 @@ public class ProcessServlet extends HttpServlet {
 			// lineItem.setAccountCode("1400"); // "1400 - Grazing Income"
 
 			// contact to send invoice to
-			contact = new Contact();
+			Contact contact = new Contact();
 			contact.setName(name);
-			
-			// pdf attachment
-			Attachment attachment = new Attachment();
 
 			// invoice object
-			invoice = new Invoice();
+			Invoice invoice = new Invoice();
+
+			// if invoice total is negative, invert total and change to accounts payable
 			if(lineItem.getUnitAmount() >= 0.0) {
 				invoice.setType(TypeEnum.ACCREC);
 			}else {
@@ -195,78 +287,24 @@ public class ProcessServlet extends HttpServlet {
 				lineItem.setUnitAmount(-lineItem.getUnitAmount());
 				lineItem.setLineAmount(-lineItem.getLineAmount());
 			}
+
 			invoice.addLineItemsItem(lineItem);
 			invoice.setContact(contact);
 			invoice.setDueDate(dueDate);
 			invoice.setDate(madeDate);
 			invoice.setReference(invoiceNumber);
 			invoice.setStatus(StatusEnum.SUBMITTED);
-			invoice.addAttachmentsItem(attachment);
 
 			// adding invoice items to the object that gets sent to the xero servers
 			invoices.addInvoicesItem(invoice);
 		}
 		
-//###########################################################################################################
-
 		// add invoices to xero database
 		try {
-			accountingApi.createInvoice(invoices, true);
+			serverInvoices = accountingApi.createInvoice(invoices, true);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-
-		// printwriter to output to screen
-		PrintWriter out;
-
-		try {
-			
-			boolean failed = false;
-			out = response.getWriter();
-
-			out.println("<html>");
-			out.println("<body>");
-			out.println("All File(s) Uploaded and Processed<br>");
-			out.println("<br>");
-			out.println("<br>");
-			out.println("File(s) failed, check invoices:<br>");
-			
-			for(int i = 0; i < failedProcessing.length; i++) {
-				System.out.println(failedProcessing[i]);
-				if(failedProcessing[i]!=null) {
-					out.println(failedProcessing[i]+"<br>");
-					failed=true;
-					failedProcessing[i]=null;
-				}
-				System.out.println(failedProcessing[i]);
-				System.out.println("End");
-			}
-
-			System.out.println("End End");
-			if(!failed) {
-				out.println("No Failed Files<br>");
-			}
-			
-			out.println("<br>");
-			out.println("<br>");
-			out.println("<form action=\"./upload\">");
-			out.println("<input type=\"submit\" value=\"Upload more File(s)\">");
-			out.println("</form>");
-			out.println("</body>");
-			out.println("</html>");
-
-		} catch (IOException e1) {
-			e1.printStackTrace();
-		}
-
-		// delete all uploaded files
-		File directory = new File(UPLOAD_DIRECTORY);
-
-		File[] files = directory.listFiles();
-		for(File file:files) {
-			file.delete();
-		}
-
 	}
 
 }
