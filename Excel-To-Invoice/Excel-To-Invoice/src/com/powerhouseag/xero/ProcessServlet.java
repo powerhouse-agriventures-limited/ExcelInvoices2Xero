@@ -256,7 +256,7 @@ public class ProcessServlet extends HttpServlet {
 			lineItem.setDescription("2019 Final");
 			lineItem.setQuantity(1.0);
 			lineItem.setTaxType("OUTPUT2");
-			lineItem.setAccountCode("200"); // "1502 - Grazing - May-May Heifers"
+			lineItem.setAccountCode("1502"); // "1502 - Grazing - May-May Heifers"
 			
 			//configuration for start of year annual invoices
 			//lineItem.setDescription("May-May Grazing");
