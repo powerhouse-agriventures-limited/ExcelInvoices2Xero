@@ -142,7 +142,7 @@ public class ProcessServlet extends HttpServlet {
 			InputStream is = new FileInputStream(pdf);
 			byte[] bytes = IOUtils.toByteArray(is);
 			
-			System.out.println(serverInvoices.getInvoices().get(0).getInvoiceID());
+			System.out.println(serverInvoices.getInvoices().get(i).getInvoiceID());
 
 			try {
 				accountingApi.createInvoiceAttachmentByFileName(serverInvoices.getInvoices().get(i).getInvoiceID(), pdf.getName(), bytes);
