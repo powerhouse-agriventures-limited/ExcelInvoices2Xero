@@ -30,7 +30,8 @@ import com.xero.models.accounting.LineItem;
 public class ProcessServlet extends HttpServlet {
 
 	private static final long serialVersionUID = 1L;
-	private final String UPLOAD_DIRECTORY = "./WEB-INF/files";
+	// private final String UPLOAD_DIRECTORY = "./WEB-INF/files";
+	private final String UPLOAD_DIRECTORY = "c:/temp/excel2invoiceuploads";
 	private int noFiles;
 	private String[] fileNames;
 	private String[] failedProcessing = new String[100];
@@ -160,6 +161,7 @@ public class ProcessServlet extends HttpServlet {
 		File[] files = directory.listFiles();
 		for(File file:files) {
 			file.delete();
+			System.out.println("Deleting file : "+file.getName());
 		}
 	}
 	
@@ -212,17 +214,21 @@ public class ProcessServlet extends HttpServlet {
 
 			try {
 				// get sub total from excel sheet
-				subTotal = excel.getSubTotal();
+				subTotal = excel.getSubTotal()/4;
 			}catch(NullPointerException e) {
 				failedProcessing[i] = fileNames[i];
 			}
 
 			// extracting individual year, month, and day integers and adjusting to actual values
-			int year = date.getYear()-70;
-			int month = date.getMonthValue()+1;
-			int day = date.getDayOfMonth()-1;
+			//int year = date.getYear()-70;
+			int year = 2019;
+			//int month = date.getMonthValue()+1;
+			int month = 6;
+			//int day = date.getDayOfMonth()-1;
+			int day = 20;
 
 			// date object for date invoice was made
+			//madeDate = LocalDate.of(year, month-1, day);
 			madeDate = LocalDate.of(year, month-1, day);
 
 			// if month is bigger than 12 reset back to one and add year
@@ -253,10 +259,10 @@ public class ProcessServlet extends HttpServlet {
 			}
 
 			//configuration for end of year final invoices
-			lineItem.setDescription("2019 Final");
-			lineItem.setQuantity(1.0);
-			lineItem.setTaxType("OUTPUT2");
-			lineItem.setAccountCode("1502"); // "1502 - Grazing - May-May Heifers"
+//			lineItem.setDescription("2019 Final");
+//			lineItem.setQuantity(1.0);
+//			lineItem.setTaxType("OUTPUT2");
+//			lineItem.setAccountCode("1502"); // "1502 - Grazing - May-May Heifers"
 			
 			//configuration for start of year annual invoices
 			//lineItem.setDescription("May-May Grazing");
@@ -265,10 +271,10 @@ public class ProcessServlet extends HttpServlet {
 			//lineItem.setAccountCode("1502"); // "1502 - Grazing - May-May Heifers"
 
 			//configuration for start of year cow grazing invoices
-			//lineItem.setDescription("Winter Cow Grazing");
-			//lineItem.setQuantity(1.0);
-			//lineItem.setTaxType("OUTPUT2");
-			// lineItem.setAccountCode("1400"); // "1400 - Grazing Income"
+			lineItem.setDescription("2019 Winter Cow Grazing");
+			lineItem.setQuantity(1.0);
+			lineItem.setTaxType("OUTPUT2");
+			lineItem.setAccountCode("1400"); // "1400 - Grazing Income"
 
 			// contact to send invoice to
 			Contact contact = new Contact();
