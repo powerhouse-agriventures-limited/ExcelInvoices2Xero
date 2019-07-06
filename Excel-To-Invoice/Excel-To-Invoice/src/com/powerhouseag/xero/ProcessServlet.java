@@ -26,6 +26,10 @@ import com.xero.models.accounting.Invoice.StatusEnum;
 import com.xero.models.accounting.Invoice.TypeEnum;
 import com.xero.models.accounting.Invoices;
 import com.xero.models.accounting.LineItem;
+import com.xero.models.accounting.RepeatingInvoice;
+import com.xero.models.accounting.RepeatingInvoices;
+import com.xero.models.accounting.Schedule;
+import com.xero.models.accounting.Schedule.UnitEnum;
 
 public class ProcessServlet extends HttpServlet {
 
@@ -48,7 +52,10 @@ public class ProcessServlet extends HttpServlet {
 		accountingApi = ApiStorage.getAccountingApi();
 
 		// take excel data and put onto invoice
-		parseExcel();
+		parseSingleExcel();
+		
+		// take excel data and put onto invoice
+		//parseRepeatingExcel();
 
 		// attach pdfs to invoices on server
 		attachPdfs();
@@ -166,8 +173,8 @@ public class ProcessServlet extends HttpServlet {
 	}
 	
 	//########################################################################
-	// function to take data from excel sheet and put into xero invoice object
-	private void parseExcel() {
+	// function to take data from single excel sheet and put into xero invoice object
+	private void parseSingleExcel() {
 
 		// invoices to get uploaded to xero
 		Invoices invoices = new Invoices();
@@ -239,24 +246,16 @@ public class ProcessServlet extends HttpServlet {
 
 			// line on invoice
 			LineItem lineItem = new LineItem();
-
-			// if repeating invoice sub total is divided by 12
-			if(excel.getRepeating()) {
-				lineItem.setLineAmount(subTotal/12);
-				lineItem.setUnitAmount(subTotal/12);
-
-				// due date object gets set to 20th of next month
-				dueDate = LocalDate.of(year, month, 20);
-
-				// else sub total is as written on invoice
-			}else {
-				// set subtotal to what is writen on excel
+			
 				lineItem.setLineAmount(subTotal);
 				lineItem.setUnitAmount(subTotal);
 
 				// due date object gets set to 20th of next month
 				dueDate = LocalDate.of(year, month, 20);
-			}
+
+				// invoice object
+				Invoice invoice = new Invoice();
+			
 
 			//configuration for end of year final invoices
 //			lineItem.setDescription("2019 Final");
@@ -279,9 +278,6 @@ public class ProcessServlet extends HttpServlet {
 			// contact to send invoice to
 			Contact contact = new Contact();
 			contact.setName(name);
-
-			// invoice object
-			Invoice invoice = new Invoice();
 
 			// if invoice total is negative, invert total and change to accounts payable
 			if(lineItem.getUnitAmount() >= 0.0) {
@@ -310,5 +306,146 @@ public class ProcessServlet extends HttpServlet {
 			e.printStackTrace();
 		}
 	}
+	
+	//########################################################################
+		// function to take data from repeating excel sheet and put into xero invoice object
+		private void parseRepeatingExcel() {
+
+			// invoices to get uploaded to xero
+			RepeatingInvoices invoices = new RepeatingInvoices();
+			
+			for(int i = 0; i < noFiles; i++) {
+
+				// files that were uploaded
+				fileObject = new File(UPLOAD_DIRECTORY+File.separator+fileNames[i]);
+
+				// putting files into excel objects
+				Excel excel = new Excel(fileObject.getAbsolutePath());
+
+				// date due and date made
+				LocalDate dueDate;
+				LocalDate madeDate;
+
+				LocalDate date = LocalDate.now();
+
+				String name = "Someone";
+				double subTotal = 0.00;
+				String invoiceNumber = "An Invoice Number";
+
+				// using try/catch to see if any files fail and keep processing others
+				try {
+					// get name from excel sheet
+					name = excel.getName();
+				}catch(NullPointerException e) {
+					failedProcessing[i] = fileNames[i];
+				}
+
+				try {
+					// get invoice number from excel sheet
+					invoiceNumber = excel.getInvoiceNo();
+				}catch(NullPointerException e) {
+					failedProcessing[i] = fileNames[i];
+				}
+
+				try {
+					// get date from excel sheet
+					date = excel.getInvoiceDate();
+				}catch(NullPointerException e) {
+					failedProcessing[i] = fileNames[i];
+				}
+
+				try {
+					// get sub total from excel sheet
+					subTotal = excel.getSubTotal()/4;
+				}catch(NullPointerException e) {
+					failedProcessing[i] = fileNames[i];
+				}
+
+				// extracting individual year, month, and day integers and adjusting to actual values
+				//int year = date.getYear()-70;
+				int year = 2019;
+				//int month = date.getMonthValue()+1;
+				int month = 6;
+				//int day = date.getDayOfMonth()-1;
+				int day = 20;
+
+				// date object for date invoice was made
+				//madeDate = LocalDate.of(year, month-1, day);
+				madeDate = LocalDate.of(year, month-1, day);
+
+				// if month is bigger than 12 reset back to one and add year
+				if(month>=13) {
+					month-=12;
+					year+=1;
+				}
+
+				// line on invoice
+				LineItem lineItem = new LineItem();
+				
+				RepeatingInvoice invoice = new RepeatingInvoice();
+					lineItem.setLineAmount(subTotal/12);
+					lineItem.setUnitAmount(subTotal/12);
+
+					// due date object gets set to 20th of next month
+					dueDate = LocalDate.of(year, month, 20);
+					
+				//configuration for end of year final invoices
+//				lineItem.setDescription("2019 Final");
+//				lineItem.setQuantity(1.0);
+//				lineItem.setTaxType("OUTPUT2");
+//				lineItem.setAccountCode("1502"); // "1502 - Grazing - May-May Heifers"
+				
+				//configuration for start of year annual invoices
+				//lineItem.setDescription("May-May Grazing");
+				//lineItem.setQuantity(1.0);
+				//lineItem.setTaxType("OUTPUT2");
+				//lineItem.setAccountCode("1502"); // "1502 - Grazing - May-May Heifers"
+
+				//configuration for start of year cow grazing invoices
+				lineItem.setDescription("2019 Winter Cow Grazing");
+				lineItem.setQuantity(1.0);
+				lineItem.setTaxType("OUTPUT2");
+				lineItem.setAccountCode("1400"); // "1400 - Grazing Income"
+
+				// contact to send invoice to
+				Contact contact = new Contact();
+				contact.setName(name);
+
+				// if invoice total is negative, invert total and change to accounts payable
+				if(lineItem.getUnitAmount() >= 0.0) {
+					invoice.setType(RepeatingInvoice.TypeEnum.ACCREC);
+				}else {
+					invoice.setType(RepeatingInvoice.TypeEnum.ACCPAY);
+					lineItem.setUnitAmount(-lineItem.getUnitAmount());
+					lineItem.setLineAmount(-lineItem.getLineAmount());
+				}
+
+				// schedule for repeating invoices
+				Schedule schedule = new Schedule();
+				schedule.setUnit(UnitEnum.MONTHLY);
+				schedule.setStartDate(madeDate);
+				schedule.setEndDate(dueDate);
+				
+				// set invoice parameters
+				invoice.addLineItemsItem(lineItem);
+				invoice.setContact(contact);
+				invoice.setReference(invoiceNumber);
+				invoice.setStatus(RepeatingInvoice.StatusEnum.AUTHORISED);
+				invoice.setSchedule(schedule);
+
+				// adding invoice items to object that gets sent to the xero servers
+				invoices.addRepeatingInvoicesItem(invoice);
+			}
+			
+			// add invoices to xero database
+			/*
+			try {
+				serverInvoices = accountingApi.createInvoice(invoices, true);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			*/
+		}
+
 
 }
