@@ -1,11 +1,11 @@
 package com.powerhouseag.xero;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.PrintWriter;
 import java.util.List;
+import java.util.UUID;
 
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -14,18 +14,19 @@ import javax.servlet.http.HttpServletResponse;
 import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.disk.DiskFileItemFactory;
 import org.apache.commons.fileupload.servlet.ServletFileUpload;
-import org.apache.poi.util.IOUtils;
 import org.threeten.bp.LocalDate;
 
 import com.powerhouseag.excel.Excel;
-import com.powerhouseag.excel.ExcelToPdf;
 import com.xero.api.client.AccountingApi;
+import com.xero.api.client.FilesApi;
 import com.xero.models.accounting.Contact;
 import com.xero.models.accounting.Invoice;
 import com.xero.models.accounting.Invoice.StatusEnum;
 import com.xero.models.accounting.Invoice.TypeEnum;
 import com.xero.models.accounting.Invoices;
 import com.xero.models.accounting.LineItem;
+import com.xero.models.files.FileObject;
+import com.xero.models.files.Files;
 
 public class ProcessServlet extends HttpServlet {
 
@@ -33,7 +34,9 @@ public class ProcessServlet extends HttpServlet {
 	// private final String UPLOAD_DIRECTORY = "./WEB-INF/files";
 	private final String UPLOAD_DIRECTORY = "c:/temp/excel2invoiceuploads";
 	private String[] failedProcessing = new String[100];
+	private String[] failedProcessingReason = new String[100];
 	private AccountingApi accountingApi;
+	private FilesApi fileApi;
 
 	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
 
@@ -42,6 +45,7 @@ public class ProcessServlet extends HttpServlet {
 
 		// api to access xero database
 		accountingApi = ApiStorage.getAccountingApi();
+		fileApi = ApiStorage.getFileApi();
 
 		// take excel data and put onto invoice
 		Invoices serverInvoices = parseSingleExcel(files);
@@ -50,7 +54,7 @@ public class ProcessServlet extends HttpServlet {
 		//parseRepeatingExcel();
 
 		// attach pdfs to invoices on server
-		attachPdfs(serverInvoices, files);
+		//attachPdfs(serverInvoices, files);
 
 		// print to screen that transfer has succeeded
 		printSuccess(response);
@@ -108,7 +112,7 @@ public class ProcessServlet extends HttpServlet {
 
 			for(int i = 0; i < failedProcessing.length; i++) {
 				if(failedProcessing[i]!=null) {
-					out.println(failedProcessing[i]+"<br>");
+					out.println(failedProcessing[i]+" - Failed to extract "+failedProcessingReason[i]+"<br>");
 					failed=true;
 					failedProcessing[i]=null;
 				}
@@ -134,9 +138,10 @@ public class ProcessServlet extends HttpServlet {
 	//#######################################
 	// function to attach pdfs to invoices
 	private void attachPdfs(Invoices serverInvoices, File[] files) throws IOException {
-		for(int i = 0; i < serverInvoices.getInvoices().size(); i++) {
-
-			File pdf = new File(files[i].getAbsolutePath()+".pdf");
+		for(int i = 0; i < files.length; i++) {
+			
+			//File pdf = new File(files[i].getAbsolutePath()+".pdf");
+			/*
 			try {
 				ExcelToPdf.createPdf(pdf, files[i]);
 			} catch (Exception e1) {
@@ -151,8 +156,39 @@ public class ProcessServlet extends HttpServlet {
 				accountingApi.createInvoiceAttachmentByFileName(serverInvoices.getInvoices().get(i).getInvoiceID(), pdf.getName(), bytes);
 			} catch (IOException e) {
 				e.printStackTrace();
+			}*/
+			
+			//accountingApi.createInvoiceAttachmentByFileName(serverInvoices.getInvoices().get(i).getInvoiceID(), arg1, arg2)
+			//List<Folder> folders = fileApi.getFolders("Grazing to Sort");
+			//Folder folder = folders.get(0);
+			//System.out.println(folder.getFileCount());
+			
+			int pathCutoffLength = 5;
+			
+			String excelName = files[i].getName();
+			String pdfName = excelName.substring(0, excelName.length()-pathCutoffLength)+".pdf";
+			
+			System.out.println(pdfName);
+			
+			UUID id = null;
+			
+			Files xeroFiles = fileApi.getFiles(null,null,pdfName);
+			System.out.println(xeroFiles.getTotalCount());
+			/*List<FileObject> xeroFilesList = xeroFiles.getItems();
+			
+			for(int x = 0; x < xeroFilesList.size(); x++) {
+				System.out.println(xeroFilesList.get(x).getName());
+				if(xeroFilesList.get(x).getName() == pdfName) {
+					id = xeroFilesList.get(x).getId();
+					break;
+				}
 			}
+			
+			ByteArrayInputStream fileContent = fileApi.getFileContent(id);
+			byte[] fileBytes = fileContent.readAllBytes();
 
+			accountingApi.createInvoiceAttachmentByFileName(serverInvoices.getInvoices().get(i).getInvoiceID(), pdfName, fileBytes);
+			//System.out.println(file.getId());*/
 		}
 	}
 
@@ -193,6 +229,7 @@ public class ProcessServlet extends HttpServlet {
 
 			LocalDate date = LocalDate.now();
 
+			// Base values used if info can't be found on excel sheet
 			String name = "Someone";
 			double subTotal = 0.00;
 			String invoiceNumber = "An Invoice Number";
@@ -203,6 +240,7 @@ public class ProcessServlet extends HttpServlet {
 				name = excel.getName();
 			}catch(NullPointerException e) {
 				failedProcessing[i] = files[i].getName();
+				failedProcessingReason[i] = "Name";
 			}
 
 			try {
@@ -210,6 +248,7 @@ public class ProcessServlet extends HttpServlet {
 				invoiceNumber = excel.getInvoiceNo();
 			}catch(NullPointerException e) {
 				failedProcessing[i] = files[i].getName();
+				failedProcessingReason[i] = "Invoice No.";
 			}
 
 			try {
@@ -217,20 +256,22 @@ public class ProcessServlet extends HttpServlet {
 				date = excel.getInvoiceDate();
 			}catch(NullPointerException e) {
 				failedProcessing[i] = files[i].getName();
+				failedProcessingReason[i] = "Date";
 			}
 
 			try {
 				// get sub total from excel sheet
-				//subTotal = excel.getSubTotal();
+				subTotal = excel.getSubTotal();
 				
 				//cow grazing
 				//subTotal = excel.getSubTotal()/4;
 				
 				//annual heifer grazing
-				subTotal = excel.getSubTotal()/12;
+				//subTotal = excel.getSubTotal()/12;
 				
 			}catch(NullPointerException e) {
 				failedProcessing[i] = files[i].getName();
+				failedProcessingReason[i] = "Sub Total";
 			}
 
 			// extracting individual year, month, and day integers and adjusting to actual values
@@ -244,7 +285,7 @@ public class ProcessServlet extends HttpServlet {
 			// date object for date invoice was made
 			//madeDate = LocalDate.of(year, month-1, day);
 			//madeDate = LocalDate.of(year, month-1, day);
-			madeDate = LocalDate.of(2019, 05, 28);
+			madeDate = LocalDate.of(2020, 06, 01);
 
 			// if month is bigger than 12 reset back to one and add year
 			if(month>=13) {
@@ -254,7 +295,7 @@ public class ProcessServlet extends HttpServlet {
 
 			// due date object gets set to 20th of next month
 			//dueDate = LocalDate.of(year, month, 20);
-			dueDate = LocalDate.of(2019, 6, 20);
+			dueDate = LocalDate.of(2020, 06, 20);
 			
 			// line on invoice
 			LineItem lineItem = new LineItem();

@@ -13,6 +13,7 @@ import com.xero.api.Config;
 import com.xero.api.JsonConfig;
 import com.xero.api.OAuthAccessToken;
 import com.xero.api.client.AccountingApi;
+import com.xero.api.client.FilesApi;
 
 
 @WebServlet("/CallbackServlet")
@@ -45,11 +46,16 @@ public class CallbackServlet extends HttpServlet
 				storage.save(response,accessToken.getAll());
 				
 				ApiClient apiClientForAccounting = new ApiClient(config.getApiUrl(),null,null,null);
+				ApiClient apiClientForFiles = new ApiClient(config.getFilesUrl(),null,null,null);
 				
 				AccountingApi accountingApi = new AccountingApi(apiClientForAccounting);
 				accountingApi.setOAuthToken(accessToken.getToken(), accessToken.getTokenSecret());
 				
+				FilesApi fileApi = new FilesApi(apiClientForFiles);
+				fileApi.setOAuthToken(accessToken.getToken(), accessToken.getTokenSecret());
+				
 				ApiStorage.setAccountingApi(accountingApi);
+				ApiStorage.setFileApi(fileApi);
 				
 				response.sendRedirect("./upload");
 				

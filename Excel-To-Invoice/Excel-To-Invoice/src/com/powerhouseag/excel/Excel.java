@@ -96,7 +96,7 @@ public class Excel {
 		}
 		
 		//iterate through spreadsheet looking for values
-		for(int y = 0; y < 60; y++) {
+		for(int y = 0; y < 80; y++) {
 			Row r = sheet.getRow(y);
 			for(int x = 0; x < 8; x++) {
 				try {
@@ -105,9 +105,7 @@ public class Excel {
 							output = r.getCell(x+right);
 						}
 					}
-				}catch(NullPointerException e) {
-					
-				}
+				}catch(NullPointerException e) {}
 			}
 		}
 		return output;
