@@ -1,5 +1,6 @@
 package com.powerhouseag.xero;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -14,6 +15,7 @@ import javax.servlet.http.HttpServletResponse;
 import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.disk.DiskFileItemFactory;
 import org.apache.commons.fileupload.servlet.ServletFileUpload;
+import org.apache.poi.util.IOUtils;
 import org.threeten.bp.LocalDate;
 
 import com.powerhouseag.excel.Excel;
@@ -141,13 +143,13 @@ public class ProcessServlet extends HttpServlet {
 		
 		ArrayList<FileObject> allFiles = new ArrayList<>();
 		
-		for(int i = 0; i < 9; i++) {
+		for(int i = 0; i < 10; i++) {
 			Files xeroFiles = fileApi.getFiles(100,i+1,null);
 			List<FileObject> fileObjects = xeroFiles.getItems();
 			allFiles.addAll(fileObjects);
 		}
 		
-		System.out.println(allFiles.size());
+		System.out.println("Number of files: "+allFiles.size());
 		
 		for(int i = 0; i < files.length; i++) {
 			
@@ -169,11 +171,6 @@ public class ProcessServlet extends HttpServlet {
 				e.printStackTrace();
 			}*/
 			
-			//accountingApi.createInvoiceAttachmentByFileName(serverInvoices.getInvoices().get(i).getInvoiceID(), arg1, arg2)
-			//List<Folder> folders = fileApi.getFolders("Grazing to Sort");
-			//Folder folder = folders.get(0);
-			//System.out.println(folder.getFileCount());
-			
 			int pathCutoffLength = 5;
 			
 			String excelName = files[i].getName();
@@ -183,23 +180,25 @@ public class ProcessServlet extends HttpServlet {
 			
 			UUID id = null;
 			
-			Files xeroFiles = fileApi.getFiles(null,null,pdfName);
-			System.out.println(xeroFiles.getTotalCount());
-			/*List<FileObject> xeroFilesList = xeroFiles.getItems();
-			
-			for(int x = 0; x < xeroFilesList.size(); x++) {
-				System.out.println(xeroFilesList.get(x).getName());
-				if(xeroFilesList.get(x).getName() == pdfName) {
-					id = xeroFilesList.get(x).getId();
+			for(int x = 0; x < allFiles.size(); x++) {
+				//System.out.println(allFiles.get(x).getName());
+				if(allFiles.get(x).getName().contentEquals(pdfName)) {
+					id = allFiles.get(x).getId();
+					System.out.println("Found file");
 					break;
 				}
 			}
 			
+			if(id == null) {
+				System.out.println("No file found");
+			}
+			
 			ByteArrayInputStream fileContent = fileApi.getFileContent(id);
-			byte[] fileBytes = fileContent.readAllBytes();
+			byte[] fileBytes = IOUtils.toByteArray(fileContent);
 
 			accountingApi.createInvoiceAttachmentByFileName(serverInvoices.getInvoices().get(i).getInvoiceID(), pdfName, fileBytes);
-			//System.out.println(file.getId());*/
+			//fileApi.deleteFile(id);
+			System.out.println(id);
 		}
 	}
 
