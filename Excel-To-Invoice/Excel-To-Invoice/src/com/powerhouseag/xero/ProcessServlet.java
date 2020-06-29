@@ -1,9 +1,9 @@
 package com.powerhouseag.xero;
 
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -54,7 +54,7 @@ public class ProcessServlet extends HttpServlet {
 		//parseRepeatingExcel();
 
 		// attach pdfs to invoices on server
-		//attachPdfs(serverInvoices, files);
+		attachPdfs(serverInvoices, files);
 
 		// print to screen that transfer has succeeded
 		printSuccess(response);
@@ -138,6 +138,17 @@ public class ProcessServlet extends HttpServlet {
 	//#######################################
 	// function to attach pdfs to invoices
 	private void attachPdfs(Invoices serverInvoices, File[] files) throws IOException {
+		
+		ArrayList<FileObject> allFiles = new ArrayList<>();
+		
+		for(int i = 0; i < 9; i++) {
+			Files xeroFiles = fileApi.getFiles(100,i+1,null);
+			List<FileObject> fileObjects = xeroFiles.getItems();
+			allFiles.addAll(fileObjects);
+		}
+		
+		System.out.println(allFiles.size());
+		
 		for(int i = 0; i < files.length; i++) {
 			
 			//File pdf = new File(files[i].getAbsolutePath()+".pdf");
