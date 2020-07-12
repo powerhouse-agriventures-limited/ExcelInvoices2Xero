@@ -65,19 +65,9 @@ public class Excel {
 	}
 	
 	// check if the invoice is to be paid over 12 months
-	public boolean getRepeating() {
-		boolean repeating=false;
-		try{
-			if(find("Monthly amount due by automatic payment (total divided by 12 months)", 5)!=null) {
+	public double getRepeating() {
+		return find("amount due by automatic payment (total divided by", 5).getNumericCellValue();
 			
-			repeating=true;
-			}else {
-				repeating=false;
-			}
-		}catch(NullPointerException e) {
-			System.out.println("Search for repeating invoice failed");
-		}
-		return repeating;
 	}
 
 	// find text within an excel file
@@ -101,7 +91,7 @@ public class Excel {
 			for(int x = 0; x < 8; x++) {
 				try {
 					if(r.getCell(x).getCellType() == CellType.STRING) {
-						if(r.getCell(x).getStringCellValue().equals(text)) {
+						if(r.getCell(x).getStringCellValue().contains(text)) {
 							output = r.getCell(x+right);
 						}
 					}

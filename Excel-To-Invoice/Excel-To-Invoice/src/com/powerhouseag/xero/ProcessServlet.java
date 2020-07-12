@@ -26,6 +26,7 @@ import com.xero.models.accounting.Invoice;
 import com.xero.models.accounting.Invoice.StatusEnum;
 import com.xero.models.accounting.Invoice.TypeEnum;
 import com.xero.models.accounting.Invoices;
+import com.xero.models.accounting.LineAmountTypes;
 import com.xero.models.accounting.LineItem;
 import com.xero.models.files.FileObject;
 import com.xero.models.files.Files;
@@ -220,7 +221,8 @@ public class ProcessServlet extends HttpServlet {
 				byte[] fileBytes = IOUtils.toByteArray(fileContent);
 	
 				accountingApi.createInvoiceAttachmentByFileName(serverInvoices.getInvoices().get(i).getInvoiceID(), pdfName, fileBytes);
-				fileApi.deleteFile(id);
+				//don't delete file for repeating invoices
+				//fileApi.deleteFile(id);
 			}
 		}
 		// return all errors
@@ -233,7 +235,8 @@ public class ProcessServlet extends HttpServlet {
 		File directory = new File(UPLOAD_DIRECTORY);
 		File[] files = directory.listFiles();
 		for(File file:files) {
-			file.delete();
+			//comment this out when doing repeating invoices so can manually attach once have converted invoice to repeating in Xero
+			//file.delete();
 			System.out.println("Deleting file : "+file.getName());
 		}
 	}
@@ -259,11 +262,15 @@ public class ProcessServlet extends HttpServlet {
 			Excel excel = new Excel(files[i].getAbsolutePath());
 
 			// date due and date made
+			LocalDate date = LocalDate.of(2020, 05, 01);
 			LocalDate dueDate;
 			LocalDate madeDate;
+			
+			boolean repeating = true;
 
 			// Base values used if info can't be found on excel sheet
 			String name = "Someone";
+			double repeatingSubTotal = 0.00;
 			double subTotal = 0.00;
 			String invoiceNumber = "An Invoice Number";
 
@@ -286,7 +293,7 @@ public class ProcessServlet extends HttpServlet {
 
 			try {
 				// get date from excel sheet
-				LocalDate date = excel.getInvoiceDate();
+				date = excel.getInvoiceDate();
 			}catch(NullPointerException e) {
 				failedProcessing[i] = true;
 				failedProcessingReason[i][2] = true;
@@ -300,25 +307,45 @@ public class ProcessServlet extends HttpServlet {
 				failedProcessingReason[i][3] = true;
 			}
 			
+			try {
+				// get repeating sub total from excel sheet
+				repeatingSubTotal = excel.getRepeating();
+			}catch(NullPointerException e) {
+				repeating = false;
+				failedProcessing[i] = true;
+				failedProcessingReason[i][3] = true;
+			}
+			
 			// date invoice was issued ############################################
-			madeDate = LocalDate.of(2020, 06, 01);
+			//madeDate = LocalDate.of(2020, 06, 01);
+			madeDate = LocalDate.of(2020, date.getMonthValue(), date.getDayOfMonth());
 
 			// date invoice is due ################################################
 			dueDate = LocalDate.of(2020, 06, 20);
 			
 			// line on invoice
 			LineItem lineItem = new LineItem();
-			lineItem.setLineAmount(subTotal);
-			lineItem.setUnitAmount(subTotal);
+			if(repeating) {
+				lineItem.setLineAmount(repeatingSubTotal);
+				lineItem.setUnitAmount(repeatingSubTotal);
+			} else {
+				lineItem.setLineAmount(subTotal);
+				lineItem.setUnitAmount(subTotal);
+			}
 
 			// invoice object
 			Invoice invoice = new Invoice();
 
 			//configuration for start of year annual invoices ######################
-			lineItem.setDescription("May-May Grazing");
+			//lineItem.setDescription("May-May Grazing-2020 Final");
+			lineItem.setDescription("May-May Grazing-" + name);
+			//lineItem.setDescription(("Winter Cow Grazing-" + name ));
 			lineItem.setQuantity(1.0);
 			lineItem.setTaxType("OUTPUT2");
+			
+			//change AccountCode depending on what invoices are being uploaded
 			lineItem.setAccountCode("1502"); // "1502 - Grazing - May-May Heifers"
+			//lineItem.setAccountCode("1400"); // "1400 - Grazing Income"
 
 			// contact to send invoice to
 			Contact contact = new Contact();
@@ -340,7 +367,11 @@ public class ProcessServlet extends HttpServlet {
 			invoice.setDate(madeDate);
 			invoice.setReference(invoiceNumber);
 			invoice.setStatus(StatusEnum.SUBMITTED);
-
+			if(repeating) {
+				invoice.setLineAmountTypes(LineAmountTypes.INCLUSIVE);
+			}else {
+				invoice.setLineAmountTypes(LineAmountTypes.EXCLUSIVE);
+			}
 			// adding invoice items to the object that gets sent to the xero servers
 			invoices.addInvoicesItem(invoice);
 		}
